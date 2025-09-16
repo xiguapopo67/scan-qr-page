@@ -1,4 +1,4 @@
-gi# 多阶段构建Dockerfile for QR码扫描应用
+# 多阶段构建Dockerfile for QR码扫描应用
 FROM node:18-alpine AS base
 
 # 安装依赖阶段
