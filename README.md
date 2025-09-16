@@ -73,19 +73,32 @@ src/
 
 **注意**: 需要HTTPS环境或localhost才能使用摄像头功能。
 
-## 部署
+## 🚀 部署
 
-### Vercel部署
+### 一键部署
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/your-username/qr-scanner-nextjs)
 
-### 其他平台
+### 部署选项
 
-应用可以部署到任何支持Next.js的平台，如：
-- Netlify
-- AWS Amplify
-- Railway
-- DigitalOcean App Platform
+- **Vercel** (推荐) - 零配置部署，自动HTTPS
+- **Netlify** - 静态站点部署
+- **Railway** - 全栈应用部署
+- **Docker** - 容器化部署
+- **AWS/GCP/Azure** - 云平台部署
+
+### CI/CD 工作流程
+
+项目包含完整的 GitHub Actions 工作流程：
+
+- ✅ **自动构建和测试** - 每次推送自动运行
+- ✅ **代码质量检查** - ESLint 和 TypeScript 检查
+- ✅ **安全扫描** - 依赖漏洞检测
+- ✅ **自动部署** - 推送到 main 分支自动部署
+- ✅ **Docker 镜像构建** - 自动构建和推送镜像
+- ✅ **发布管理** - 标签推送自动创建 Release
+
+详细文档请查看 [CI/CD 文档](docs/CI-CD.md) 和 [部署指南](docs/DEPLOYMENT.md)。
 
 ## 许可证
 

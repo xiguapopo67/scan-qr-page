@@ -1,0 +1,137 @@
+# 发布工作流程 - 自动创建GitHub Release
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  NODE_VERSION: "18"
+
+jobs:
+  # 创建发布
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # 获取上一个标签
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+          if [ -z "$PREVIOUS_TAG" ]; then
+            echo "这是第一个发布版本"
+            CHANGELOG="## 🎉 首次发布\n\n- 初始版本发布\n- QR码扫描功能\n- 现代化UI界面"
+          else
+            echo "上一个标签: $PREVIOUS_TAG"
+            # 生成变更日志
+            CHANGELOG=$(git log --pretty=format:"- %s" $PREVIOUS_TAG..HEAD | head -20)
+            if [ -z "$CHANGELOG" ]; then
+              CHANGELOG="## 🔄 更新\n\n- 版本更新"
+            else
+              CHANGELOG="## 🔄 更新\n\n$CHANGELOG"
+            fi
+          fi
+
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
+          body: |
+            ${{ steps.changelog.outputs.changelog }}
+
+            ## 📦 安装说明
+
+            ```bash
+            npm install
+            npm run dev
+            ```
+
+            ## 🚀 部署
+
+            应用已自动部署到 Vercel，访问地址：
+            https://your-app.vercel.app
+
+            ## 📋 功能特性
+
+            - 📱 实时QR码扫描
+            - 🎨 现代化UI界面
+            - 📋 智能内容识别
+            - 🔗 快速操作
+            - 📱 响应式设计
+            - 🌙 深色模式支持
+          draft: false
+          prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') }}
+
+  # 构建生产版本
+  build-production:
+    name: Build Production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-build-${{ github.ref_name }}
+          path: .next/
+          retention-days: 30
+
+  # 部署到生产环境
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [create-release, build-production]
+    steps:
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: "--prod"
+
+      - name: Notify deployment
+        run: |
+          echo "🚀 生产环境部署完成！"
+          echo "📱 应用地址: https://your-app.vercel.app"
+          echo "🏷️ 版本: ${{ github.ref_name }}"
