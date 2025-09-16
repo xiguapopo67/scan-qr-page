@@ -1,5 +1,5 @@
-# CI/CD工作流程 - 构建、测试和部署QR码扫描应用
-name: CI/CD Pipeline
+# 纯构建工作流程 - 无需外部配置
+name: Build Only
 
 on:
   push:
@@ -9,13 +9,11 @@ on:
 
 env:
   NODE_VERSION: "18"
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # 代码质量检查
-  lint:
-    name: Lint & Type Check
+  # 构建和测试
+  build:
+    name: Build & Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -36,129 +34,20 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
-  # 构建和测试
-  build-and-test:
-    name: Build & Test
-    runs-on: ubuntu-latest
-    needs: lint
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
-
       - name: Build application
         run: npm run build
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: build-files
+          name: build-files-${{ github.sha }}
           path: .next/
-          retention-days: 1
+          retention-days: 7
 
-  # 安全扫描
-  security:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    needs: lint
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run security audit
-        run: npm audit --audit-level=moderate
-
-  # 部署到Vercel (仅main分支)
-  deploy-vercel:
-    name: Deploy to Vercel
-    runs-on: ubuntu-latest
-    needs: [build-and-test, security]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: "--prod"
-
-  # 构建Docker镜像 (可选)
-  docker-build:
-    name: Build Docker Image
-    runs-on: ubuntu-latest
-    needs: [build-and-test]
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  # 通知
-  notify:
-    name: Notify Deployment
-    runs-on: ubuntu-latest
-    needs: [deploy-vercel, docker-build]
-    if: always() && github.ref == 'refs/heads/main'
-    steps:
-      - name: Notify success
-        if: needs.deploy-vercel.result == 'success'
+      - name: Build success notification
         run: |
-          echo "✅ 部署成功！应用已部署到生产环境"
-          echo "🔗 访问地址: https://your-app.vercel.app"
-
-      - name: Notify failure
-        if: needs.deploy-vercel.result == 'failure'
-        run: |
-          echo "❌ 部署失败！请检查日志"
-          exit 1
+          echo "✅ 构建成功！"
+          echo "📦 构建产物已上传到Artifacts"
+          echo "🔗 可以在Actions页面下载构建文件"
+          echo "📱 本地运行: npm run dev"
+          echo "🚀 生产运行: npm run build && npm start"

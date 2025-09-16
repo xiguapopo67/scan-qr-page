@@ -14,19 +14,33 @@ npm run dev
 
 ### 2. 配置GitHub Actions
 
-#### 方法一：使用简化工作流程（推荐）
+#### 方法一：纯构建工作流程（推荐，无需配置）
 1. 删除复杂的CI文件：
    ```bash
    rm .github/workflows/ci.yml
    rm .github/workflows/release.yml
+   rm .github/workflows/simple-ci.yml
    ```
 
-2. 重命名简化版本：
+2. 使用纯构建版本：
+   ```bash
+   mv .github/workflows/build-only.yml .github/workflows/ci.yml
+   ```
+
+#### 方法二：Docker构建工作流程
+1. 删除复杂的CI文件：
+   ```bash
+   rm .github/workflows/ci.yml
+   rm .github/workflows/release.yml
+   rm .github/workflows/build-only.yml
+   ```
+
+2. 使用Docker构建版本：
    ```bash
    mv .github/workflows/simple-ci.yml .github/workflows/ci.yml
    ```
 
-#### 方法二：配置完整工作流程
+#### 方法三：完整工作流程（需要配置Secrets）
 如果您想使用完整的工作流程，需要配置以下Secrets：
 
 ### 3. 配置GitHub Secrets
